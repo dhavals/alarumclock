@@ -1,31 +1,127 @@
-$(document).ready(function () {
+// object definitions
 
-    var appState = {
-        currentTime: new Date(),
-        alarmTime: new Date((new Date()).getTime() + 5000), // alarm will ring in 5 seconds
-        alarmState: true
-    };
+function Alarm(alarmTime, alarmTone, alarmState) {
+    this.alarmTime = alarmTime; // Date object
+    this.alarmTone = alarmTone || 'default';
+    this.alarmState = alarmState || true; // default alarm state to on
+}
 
-    Date.prototype.timeNow = function () {
-        return ((this.getHours() < 10) ? "0" : "") + ((this.getHours() > 12) ? (this.getHours() - 12) : this.getHours()) + ":" + ((this.getMinutes() < 10) ? "0" : "") + this.getMinutes() + ":" + ((this.getSeconds() < 10) ? "0" : "") + this.getSeconds() + ((this.getHours() > 12) ? (' PM') : ' AM');
-    };
+// prototype methods for builtin objects
 
-    var updateStateId = setInterval(updateState, 1000);
-    var updateScreenTimeId = setInterval(updateScreenTime, 1000);
+// yymmdd1:hh1:mm1:ss1 <=> yymmdd2:hh2:mm2:ss2 ?
+// ignore milliseconds for sake of comparison
+Date.prototype.compareTo = function(that) {
+    if (!(that instanceof Date)) {
+        throw new Error("Can't compare a Date with a non-Date object " + that);
+    }
+    var thisTemp = new Date(this.getFullYear(), this.getMonth(), this.getDate(),
+        this.getHours(), this.getMinutes(), this.getSeconds(), 0);
+    var thatTemp = new Date(that.getFullYear(), that.getMonth(), that.getDate(),
+        that.getHours(), that.getMinutes(), that.getSeconds(), 0);
 
-    var currentTimeDiv = $('#currentTime');
-    var alarmNotificationDiv = $('#alarmNotification');
+    return thisTemp.getTime() - thatTemp.getTime();
+};
+
+// Array Remove - By John Resig (MIT Licensed)
+Array.prototype.remove = function(from, to) {
+    var rest = this.slice((to || from) + 1 || this.length);
+    this.length = from < 0 ? this.length + from : from;
+    return this.push.apply(this, rest);
+};
+
+
+$(document).ready(function() {
+
+    var appState;
+    var alarmSetForm;
+    var alarmNotificationDiv;
+    var currentTimeDiv;
+    var updateScreenTimeId;
+    var updateStateId;
+    var alarmSetButton;
+
+    initApp();
+
+    function initApp() {
+        // global app state object initialization
+        appState = {
+            currentTime: new Date(),
+            alarms: []
+        };
+
+        // caching jquery selectors
+        currentTimeDiv = $('#currentTime');
+        alarmNotificationDiv = $('#alarmNotification');
+        alarmSetForm = $('#alarmSetter');
+        alarmSetButton = $('#alarmSetButton');
+
+        // attach event listeners
+        alarmSetButton.on('click', onAlarmSet);
+
+        // populate the dom
+        populateAlarmSetter();
+        updateScreenTime();
+
+        // schedule updates to app state and screen state
+        updateStateId = setInterval(updateState, 1000);
+        updateScreenTimeId = setInterval(updateScreenTime, 1000);
+    }
+
+
+    /****************************************************************************************/
+        // event handlers go here
+
+        // parsing here is subject to change, because UI elements will probably change
+    function onAlarmSet(event) {
+        var currentMoment = new Date();
+
+        // assume same date to begin with, but increment if alarm is set for a time already 'past'
+        var hours = parseInt($('#hourSet').find(':selected').text());
+        var minutes = parseInt($('#minuteSet').find(':selected').text());
+        var seconds = 0; // ignoring seconds for now, probably forever
+
+        var alarmMoment = new Date();
+        alarmMoment.setHours(hours, minutes, seconds, 0);
+
+        // if the alarm is set for a time already past today (you can set alarms at most 24 hours into the future)
+        if (currentMoment.compareTo(alarmMoment) > 0) {
+            alarmMoment.setDate(alarmMoment.getDate() + 1);
+        }
+
+        var alarmObject = new Alarm(alarmMoment, 'default', true);
+        appState.alarms.push(alarmObject);
+        return false;
+    }
+
+
+    /****************************************************************************************/
+
+
+    function populateAlarmSetter() {
+        var hourSetSelect = $('#hourSet');
+        var minuteSetSelect = $('#minuteSet');
+
+        for (var i = 0; i < 60; i++) {
+            var iString = (i < 10) ? '0' + i : i + '';
+            if (i < 24) {
+                $('<option></option>', {
+                    value: i,
+                    text: iString
+                }).appendTo(hourSetSelect);
+            }
+
+            $('<option></option>', {
+                value: i,
+                text: iString
+            }).appendTo(minuteSetSelect);
+        }
+    }
 
     function updateState() {
         appState.currentTime = new Date();
     }
 
     function updateScreenTime() {
-        currentTimeDiv.text(appState.currentTime.timeNow());
-        if ((appState.currentTime > appState.alarmTime) && appState.alarmState) {
-            appState.alarmState = false;
-            alarmNotificationDiv.text("ALARM!");
-            console.log("ring!!!");
-        }
+        currentTimeDiv.text(appState.currentTime);
     }
 });
