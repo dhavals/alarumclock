@@ -1,3 +1,38 @@
+
+// global app state object initialization
+var appState = {
+    soundManagerDeferred: $.Deferred(),
+    currentTime: new Date(),
+    alarms: [],
+    soundFilenames: ['coins.mp3', 'rain.mp3', 'bass.mp3']
+};
+
+// initialize soundManager ASAP so it loads super fast
+soundManager.setup({
+    url: 'swf/',
+    flashVersion: 9, // optional: shiny features (default = 8)
+    // optional: ignore Flash where possible, use 100% HTML5 mode
+    preferFlash: false,
+    debugFlash: true,
+    onready: SMOnReadyHandler
+});
+
+
+function SMOnReadyHandler() {
+
+    // create all sound objects
+    for (var i = 0, len = appState.soundFilenames.length; i < len; i++) {
+        var filename = appState.soundFilenames[i];
+        var soundID = filename.substr(0, filename.lastIndexOf('.'));
+        soundManager.createSound({
+            id: soundID,
+            url: 'audio/' + filename
+        });
+    }
+    console.log("SMOnReadyHandler: exiting.");
+    appState.soundManagerDeferred.resolve();
+}
+
 // object definitions
 
 function Alarm(alarmTime, alarmTone, alarmState) {
@@ -31,118 +66,113 @@ Array.prototype.remove = function(from, to) {
 
 
 $(document).ready(function() {
+    appState.soundManagerDeferred.done(function() {
+        console.log('document.ready code just ran!');
 
-    var appState;
-    var alarmSetForm;
-    var alarmNotificationDiv;
-    var currentTimeDiv;
-    var updateScreenTimeId;
-    var updateStateId;
-    var alarmSetButton;
+        var alarmSetForm;
+        var currentTimeDiv;
+        var updateScreenTimeId;
+        var updateStateId;
+        var alarmSetButton;
 
-    initApp();
+        initApp();
 
-    function initApp() {
-        // global app state object initialization
-        appState = {
-            currentTime: new Date(),
-            alarms: []
-        };
-
-        // caching jquery selectors
-        currentTimeDiv = $('#currentTime');
-        alarmNotificationDiv = $('#alarmNotification');
-        alarmSetForm = $('#alarmSetter');
-        alarmSetButton = $('#alarmSetButton');
-
-        // attach event listeners
-        alarmSetButton.on('click', onAlarmSet);
-
-        // populate the dom
-        populateAlarmSetter();
-        updateScreenTime();
-
-        // schedule updates to app state and screen state
-        updateStateId = setInterval(updateState, 1000);
-        updateScreenTimeId = setInterval(updateScreenTime, 1000);
-    }
+        function initApp() {
 
 
-    /****************************************************************************************/
-        // event handlers go here
+            // caching jquery selectors
+            currentTimeDiv = $('#currentTime');
+            alarmSetForm = $('#alarmSetter');
+            alarmSetButton = $('#alarmSetButton');
 
-        // parsing here is subject to change, because UI elements will probably change
-    function onAlarmSet(event) {
-        var currentMoment = new Date();
+            // attach event listeners
+            alarmSetButton.on('click', onAlarmSet);
 
-        // assume same date to begin with, but increment if alarm is set for a time already 'past'
-        var hours = parseInt($('#hourSet').find(':selected').text());
-        var minutes = parseInt($('#minuteSet').find(':selected').text());
-        var seconds = 0; // ignoring seconds for now, probably forever
+            // populate the dom
+            populateAlarmSetter();
+            updateScreenTime();
 
-        var alarmMoment = new Date();
-        alarmMoment.setHours(hours, minutes, seconds, 0);
-
-        // if the alarm is set for a time already past today (you can set alarms at most 24 hours into the future)
-        if (currentMoment.compareTo(alarmMoment) > 0) {
-            alarmMoment.setDate(alarmMoment.getDate() + 1);
+            // schedule updates to app state and screen state
+            updateStateId = setInterval(updateState, 1000);
+            updateScreenTimeId = setInterval(updateScreenTime, 1000);
         }
 
-        var alarmObject = new Alarm(alarmMoment, 'default', true);
-        appState.alarms.push(alarmObject);
-        console.dir(appState.alarms);
 
-        return false;
-    }
+        /****************************************************************************************/
+            // event handlers go here
+
+            // parsing here is subject to change, because UI elements will probably change
+        function onAlarmSet(event) {
+            var currentMoment = new Date();
+
+            // assume same date to begin with, but increment if alarm is set for a time already 'past'
+            var hours = parseInt($('#hourSet').find(':selected').text());
+            var minutes = parseInt($('#minuteSet').find(':selected').text());
+            var seconds = 0; // ignoring seconds for now, probably forever
+
+            var alarmMoment = new Date();
+            alarmMoment.setHours(hours, minutes, seconds, 0);
+
+            // if the alarm is set for a time already past today (you can set alarms at most 24 hours into the future)
+            if (currentMoment.compareTo(alarmMoment) > 0) {
+                alarmMoment.setDate(alarmMoment.getDate() + 1);
+            }
+
+            var alarmObject = new Alarm(alarmMoment, 'default', true);
+            appState.alarms.push(alarmObject);
+            console.dir(appState.alarms);
+            return false;
+        }
 
 
-    /****************************************************************************************/
+        /****************************************************************************************/
 
-    function populateAlarmSetter() {
-        var hourSetSelect = $('#hourSet');
-        var minuteSetSelect = $('#minuteSet');
+        function populateAlarmSetter() {
+            var hourSetSelect = $('#hourSet');
+            var minuteSetSelect = $('#minuteSet');
 
-        for (var i = 0; i < 60; i++) {
-            var iString = (i < 10) ? '0' + i : i + '';
-            if (i < 24) {
+            for (var i = 0; i < 60; i++) {
+                var iString = (i < 10) ? '0' + i : i + '';
+                if (i < 24) {
+                    $('<option></option>', {
+                        value: i,
+                        text: iString
+                    }).appendTo(hourSetSelect);
+                }
+
                 $('<option></option>', {
                     value: i,
                     text: iString
-                }).appendTo(hourSetSelect);
-            }
-
-            $('<option></option>', {
-                value: i,
-                text: iString
-            }).appendTo(minuteSetSelect);
-        }
-    }
-
-    // called every second
-    // loop through alarms array to see if any alarms need handling
-    function checkAlarms() {
-        for (var i = 0, len = appState.alarms.length; i < len; i++) {
-            var alarm = appState.alarms[i];
-            // if alarm is due
-            if (appState.currentTime.compareTo(alarm.alarmTime) > 0) {
-                // then ring it (or schedule it for ringing -- will need to add some mechanism here)
-                console.log('alarm for ' + alarm.alarmTime + ' is ringing NOW!');
-
-                // and delete the alarm, because we're done with it, right?
-                // this will change, because we need to be able to snooze this alarm.
-
-                len = appState.alarms.remove(i); // returns length of changed array, so update len
-                i--; // to stay on the same index (which will point to the next element)
+                }).appendTo(minuteSetSelect);
             }
         }
-    }
 
-    function updateState() {
-        appState.currentTime = new Date();
-        checkAlarms();
-    }
+        // called every second
+        // loop through alarms array to see if any alarms need handling
+        function checkAlarms() {
+            for (var i = 0, len = appState.alarms.length; i < len; i++) {
+                var alarm = appState.alarms[i];
+                // if alarm is due
+                if (appState.currentTime.compareTo(alarm.alarmTime) > 0) {
+                    // then ring it (or schedule it for ringing -- will need to add some mechanism here)
+                    console.log('alarm for ' + alarm.alarmTime + ' is ringing NOW!');
 
-    function updateScreenTime() {
-        currentTimeDiv.text(appState.currentTime);
-    }
+                    // and delete the alarm, because we're done with it, right?
+                    // this will change, because we need to be able to snooze this alarm.
+
+                    len = appState.alarms.remove(i); // returns length of changed array, so update len
+                    i--; // to stay on the same index (which will point to the next element)
+                }
+            }
+        }
+
+        function updateState() {
+            appState.currentTime = new Date();
+            checkAlarms();
+        }
+
+        function updateScreenTime() {
+            currentTimeDiv.text(appState.currentTime);
+        }
+    })
 });
