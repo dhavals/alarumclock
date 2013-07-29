@@ -90,12 +90,13 @@ $(document).ready(function() {
 
         var alarmObject = new Alarm(alarmMoment, 'default', true);
         appState.alarms.push(alarmObject);
+        console.dir(appState.alarms);
+
         return false;
     }
 
 
     /****************************************************************************************/
-
 
     function populateAlarmSetter() {
         var hourSetSelect = $('#hourSet');
@@ -117,8 +118,28 @@ $(document).ready(function() {
         }
     }
 
+    // called every second
+    // loop through alarms array to see if any alarms need handling
+    function checkAlarms() {
+        for (var i = 0, len = appState.alarms.length; i < len; i++) {
+            var alarm = appState.alarms[i];
+            // if alarm is due
+            if (appState.currentTime.compareTo(alarm.alarmTime) > 0) {
+                // then ring it (or schedule it for ringing -- will need to add some mechanism here)
+                console.log('alarm for ' + alarm.alarmTime + ' is ringing NOW!');
+
+                // and delete the alarm, because we're done with it, right?
+                // this will change, because we need to be able to snooze this alarm.
+
+                len = appState.alarms.remove(i); // returns length of changed array, so update len
+                i--; // to stay on the same index (which will point to the next element)
+            }
+        }
+    }
+
     function updateState() {
         appState.currentTime = new Date();
+        checkAlarms();
     }
 
     function updateScreenTime() {
