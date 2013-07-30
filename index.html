@@ -18,6 +18,7 @@
     <link rel="shortcut icon" href="favicon.ico"/>
     <link rel="stylesheet" href="css/normalize.css">
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/mp3-player-button.css"/>
     <link rel="stylesheet" href="css/custom.css"/>
 </head>
 <body>
@@ -27,18 +28,21 @@
     <select name="hourSet" id="hourSet"></select>
     <select name="minuteSet" id="minuteSet"></select>
     <label for="minuteSet">:00</label>
-    <select name="tuneSet" id="tuneSet"></select>
+    </select>
     <button id="alarmSetButton" type="submit">Set</button>
 </form>
 
-
-
+<ul id="tuneList">
+    <li class="selectedItem"><a href="audio/coins.mp3" class="sm2_button">coins</a> Spare change</li>
+    <li><a href="audio/rain.mp3" class="sm2_button">rain</a> Heavy rain</li>
+    <li><a href="audio/bass.mp3" class="sm2_button">bass</a> Bass</li>
+</ul>
 
 <script src="js/vendor/jquery-1.9.1.min.js"></script>
-
 <script src="js/vendor/soundmanager2.js"></script>
+<script src="js/vendor/mp3-player-button.js"></script>
+<script src="js/plugins.js"></script>
 <script src="js/main.js"></script>
-
 
 </body>
 </html>

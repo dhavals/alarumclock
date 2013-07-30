@@ -1,4 +1,6 @@
 
+var basicMP3Player = null;
+
 // global app state object initialization
 var appState = {
     soundManagerDeferred: $.Deferred(),
@@ -29,15 +31,16 @@ function SMOnReadyHandler() {
             url: 'audio/' + filename
         });
     }
+    basicMP3Player = new BasicMP3Player();
     console.log("SMOnReadyHandler: exiting.");
     appState.soundManagerDeferred.resolve();
 }
 
 // object definitions
 
-function Alarm(alarmTime, alarmTone, alarmState) {
+function Alarm(alarmTime, AlarmTune, alarmState) {
     this.alarmTime = alarmTime; // Date object
-    this.alarmTone = alarmTone || 'default';
+    this.alarmTune = AlarmTune || 'default';
     this.alarmState = alarmState || true; // default alarm state to on
 }
 
@@ -66,14 +69,16 @@ Array.prototype.remove = function(from, to) {
 
 
 $(document).ready(function() {
+    // when .done()'s attached listener fires, we have the DOM ready
+    // as well as SM2 onready listener finished
     appState.soundManagerDeferred.done(function() {
-        console.log('document.ready code just ran!');
 
         var alarmSetForm;
         var currentTimeDiv;
         var updateScreenTimeId;
         var updateStateId;
         var alarmSetButton;
+        var tuneList;
 
         initApp();
 
@@ -84,13 +89,15 @@ $(document).ready(function() {
             currentTimeDiv = $('#currentTime');
             alarmSetForm = $('#alarmSetter');
             alarmSetButton = $('#alarmSetButton');
-
-            // attach event listeners
-            alarmSetButton.on('click', onAlarmSet);
+            tuneList = $('#tuneList');
 
             // populate the dom
             populateAlarmSetter();
             updateScreenTime();
+
+            // attach event listeners
+            alarmSetButton.on('click', onAlarmSet);
+            tuneList.find('li').on('click', onTuneSelect);
 
             // schedule updates to app state and screen state
             updateStateId = setInterval(updateState, 1000);
@@ -117,13 +124,17 @@ $(document).ready(function() {
             if (currentMoment.compareTo(alarmMoment) > 0) {
                 alarmMoment.setDate(alarmMoment.getDate() + 1);
             }
-
-            var alarmObject = new Alarm(alarmMoment, 'default', true);
+            var selectedTune = tuneList.find('li.selectedItem > a').text();
+            var alarmObject = new Alarm(alarmMoment, selectedTune, true);
             appState.alarms.push(alarmObject);
             console.dir(appState.alarms);
             return false;
         }
 
+        function onTuneSelect(event) {
+            tuneList.find('li').removeClass('selectedItem');
+            $(event.target).addClass('selectedItem');
+        }
 
         /****************************************************************************************/
 
@@ -156,7 +167,7 @@ $(document).ready(function() {
                 if (appState.currentTime.compareTo(alarm.alarmTime) > 0) {
                     // then ring it (or schedule it for ringing -- will need to add some mechanism here)
                     console.log('alarm for ' + alarm.alarmTime + ' is ringing NOW!');
-
+                    soundManager.play(alarm.alarmTune); // this alarmTune string must be same as created Sound obj's ID
                     // and delete the alarm, because we're done with it, right?
                     // this will change, because we need to be able to snooze this alarm.
 
@@ -175,4 +186,5 @@ $(document).ready(function() {
             currentTimeDiv.text(appState.currentTime);
         }
     })
-});
+})
+;
